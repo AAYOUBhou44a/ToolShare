@@ -1,11 +1,12 @@
 {
   "name": "brief_5_toolshare",
   "version": "1.0.0",
-  "description": "",
+  "description": "API de gestion de réservation d'équipements - ToolShare",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test": "jest"
   },
   "keywords": [],
   "author": "",
@@ -17,12 +18,14 @@
     "dotenv": "^18.0.8",
     "express": "^5.3.0",
     "helmet": "^8.3.0",
-    "jest": "^30.5.2",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.11.2",
-    "supertest": "^7.3.1",
     "swagger-jsdoc": "^6.3.0",
     "swagger-ui-express": "^5.0.1",
     "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "jest": "^30.5.2",
+    "supertest": "^7.3.1"
   }
 }
