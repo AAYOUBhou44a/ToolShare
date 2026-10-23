@@ -1,6 +1,8 @@
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
+const swaggerUi = require("swagger-ui-express");
+const swaggerSpec = require("./config/swagger");
 
 const app = express();
 
@@ -14,5 +16,7 @@ app.get('/api/health', (req, res) => {
     message: 'ToolShare API fonctionne correctement',
   });
 });
+
+app.use('/api-docs', swaggerUi.serve(), swaggerUi.setup(swaggerSpec));
 
 module.exports = app;
