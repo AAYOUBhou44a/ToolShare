@@ -18,8 +18,7 @@ services:
     container_name: toolshare-mongo
     volumes:
       - toolshare_data:/data/db
-    ports:
-      - "127.0.0.1:27017:27017"
+
     healthcheck:
       test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
       interval: 5s

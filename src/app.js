@@ -17,6 +17,6 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-app.use('/api-docs', swaggerUi.serve(), swaggerUi.setup(swaggerSpec));
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 module.exports = app;
