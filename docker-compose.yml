@@ -1,0 +1,40 @@
+services:
+  api:
+    build: .
+    container_name: toolshare-api
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      MONGODB_URI: mongodb://mongo:27017/toolshare
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:8
+    container_name: toolshare-mongo
+    volumes:
+      - toolshare_data:/data/db
+
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  toolshare_data:
+
+
+
+# -image : quelle version de MongoDB utiliser.
+# - container_name : comment nommer le conteneur.
+# - volumes : comment conserver les données.
+# - ports : comment accéder à MongoDB depuis ton ordinateur.
+# - healthcheck : comment vérifier que MongoDB répond.
+# - restart : comment réagir lorsque le conteneur s'arrête.
+# - volumes: toolshare_data: : déclarer le stockage persistant. 
