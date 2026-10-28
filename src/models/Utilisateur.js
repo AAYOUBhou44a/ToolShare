@@ -41,5 +41,17 @@ const utilisateurSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+utilisateurSchema.pre('save', async function hashMotDePasse() {
+  if (!this.isModified('motDePasse')) return;
+  this.motDePasse = await bcrypt.hash(this.motDePasse, 12);
+});
 
-module.exports = mongoose.model('Utilisateur', utilisateurSchema);
+utilisateurSchema.methods.verifierMotDePasse = function verifierMotDePasse(
+  motDePasse
+) {
+  return bcrypt.compare(motDePasse, this.motDePasse);
+};
+
+module.exports =
+  mongoose.models.Utilisateur ||
+  mongoose.model('Utilisateur', utilisateurSchema);
