@@ -1,5 +1,6 @@
 
 const swaggerJsdoc = require('swagger-jsdoc');
+const path = require('node:path');
 
 const options = {
   definition: {
@@ -8,7 +9,7 @@ const options = {
       title: 'ToolShare API',
       version: '1.0.0',
       description:
-        'API de gestion des magasins, équipements et réservations de ToolShare.',
+        'API de gestion des magasins, équipements, réservations et emprunts ToolShare. Les opérations protégées utilisent un jeton Bearer JWT.',
     },
     servers: [
       {
@@ -29,13 +30,16 @@ const options = {
     tags: [
       { name: 'Health', description: 'État de l’API' },
       { name: 'Auth', description: 'Authentification' },
-      { name: 'Users', description: 'Utilisateurs' },
-      { name: 'Stores', description: 'Magasins' },
-      { name: 'Equipment', description: 'Équipements' },
+      { name: 'Stores', description: 'Gestion des magasins' },
       { name: 'Reservations', description: 'Réservations' },
+      { name: 'Loans', description: 'Sorties, retours, retards et mouvements' },
     ],
   },
-  apis: ['./src/routes/*.js', './src/docs/*.js'],
+  apis: [
+    path.join(__dirname, '../routes/*.js'),
+    path.join(__dirname, '../docs/*.js'),
+    path.join(__dirname, '../app.js'),
+  ],
 };
 
 const swaggerSpec = swaggerJsdoc(options);
