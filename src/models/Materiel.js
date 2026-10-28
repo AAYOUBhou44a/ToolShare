@@ -27,6 +27,11 @@ const materielSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    reservationVersion: {
+      type: Number,
+      default: 0,
+      select: false,
+    },
     actif: {
       type: Boolean,
       default: true,

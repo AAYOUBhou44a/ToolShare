@@ -5,6 +5,7 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./config/swagger');
 const authRoutes = require('./routes/authRoutes');
 const magasinRoutes = require('./routes/magasinRoutes');
+const reservationRoutes = require('./routes/reservationRoutes');
 const errorHandler = require('./middlewares/errorHandler');
 const HttpError = require('./utils/HttpError');
 
@@ -16,6 +17,7 @@ app.use(express.json());
 
 app.use('/api/auth', authRoutes);
 app.use('/api/magasins', magasinRoutes);
+app.use('/api/reservations', reservationRoutes);
 app.use('/api/emprunts', require('./routes/emprunt.routes'));
 
 app.get('/api/health', (req, res) => {
