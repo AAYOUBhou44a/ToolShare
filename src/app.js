@@ -16,6 +16,7 @@ app.use(express.json());
 
 app.use('/api/auth', authRoutes);
 app.use('/api/magasins', magasinRoutes);
+app.use('/api/emprunts', require('./routes/emprunt.routes'));
 
 app.get('/api/health', (req, res) => {
   res.status(200).json({
