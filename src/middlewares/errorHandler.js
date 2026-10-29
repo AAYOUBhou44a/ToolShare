@@ -24,6 +24,14 @@ const errorHandler = (error, req, res, next) => {
     });
   }
 
+  if (error.code === 20) {
+    return res.status(503).json({
+      success: false,
+      message:
+        'Les réservations nécessitent MongoDB configuré en replica set.',
+    });
+  }
+
   if (error.type === 'entity.parse.failed') {
     return res.status(400).json({
       success: false,
