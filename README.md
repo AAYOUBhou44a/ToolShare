@@ -1,167 +1,188 @@
-# ToolShare
+# ToolShare API
 
-ToolShare is a Node.js and Express API for tool stores, equipment,
-reservations, loans, and equipment movements. It uses MongoDB and Mongoose.
+ToolShare est une API REST de gestion de magasins d’outillage, de matériel,
+de réservations et d’emprunts. Le backend utilise Node.js, Express, MongoDB
+et Mongoose.
 
-> **Project status:** authentication, store management, reservations, and
-> manager loan/return endpoints are in development. Account provisioning,
-> installation, and equipment management still need completion.
+> **État du projet :** l’API expose actuellement l’authentification, la
+> gestion des magasins, les réservations et les opérations d’emprunt pour les
+> gestionnaires. La gestion complète des comptes et du matériel ainsi que
+> l’installation initiale restent à finaliser.
 
-## Requirements
+## Prérequis
 
-- Node.js 22 or later and npm (for running the API directly)
-- Docker Engine with the Docker Compose plugin (for the containerized setup)
+- Node.js 22 ou supérieur et npm, pour un lancement local
+- Docker Engine et Docker Compose, pour le lancement conteneurisé
 
-## Run with Docker Compose
+## Configuration et lancement avec Docker
 
-Compose starts the API and MongoDB. MongoDB runs as a single-node replica set
-to support transactions used to prevent concurrent overlapping reservations.
-Create a local `.env` file first; Compose requires it for the API service:
+Créer un fichier `.env` à la racine du dépôt. Compose le charge pour le
+service API.
 
 ```env
 PORT=3000
-MONGODB_URI=mongodb://localhost:27017/toolshare
-JWT_SECRET=replace-with-at-least-32-random-characters
+JWT_SECRET=remplacer-par-un-secret-aleatoire-de-32-caracteres-minimum
 JWT_EXPIRES_IN=1h
 ```
 
-Generate `JWT_SECRET` locally (for example with `openssl rand -base64 32`).
-Do not commit the `.env` file. The API requires a secret with at least 32
-characters.
+Générer le secret localement, par exemple avec `openssl rand -base64 32`.
+Ne pas versionner le fichier `.env`.
 
-Then start the services:
+Lancer l’API et MongoDB :
 
 ```bash
 docker compose up --build
 ```
 
-The API is available at <http://localhost:3000>. MongoDB data is stored in the
-named `toolshare_data` volume and is retained when the containers are stopped
-with `docker compose down`.
+L’API écoute sur <http://localhost:3000>. MongoDB fonctionne en replica set
+mono-noeud, nécessaire aux transactions utilisées pour prévenir les
+chevauchements de réservations. Les données persistent dans le volume nommé
+`toolshare_data`.
 
-To remove the database volume as well, run `docker compose down --volumes`.
-This permanently deletes the MongoDB data.
+Arrêter les conteneurs sans supprimer les données :
 
-## Run locally
+```bash
+docker compose down
+```
 
-Start MongoDB separately, then install dependencies and configure the
-connection:
+Supprimer également les données MongoDB :
+
+```bash
+docker compose down --volumes
+```
+
+Cette dernière commande est destructive.
+
+## Lancement local
+
+Le serveur MongoDB local doit être configuré comme replica set `rs0`. Installer
+les dépendances puis créer `.env` :
 
 ```bash
 npm ci
 ```
 
-Create `.env` in the project root:
-
 ```env
 PORT=3000
 MONGODB_URI=mongodb://localhost:27017/toolshare?replicaSet=rs0
-JWT_SECRET=replace-with-at-least-32-random-characters
+JWT_SECRET=remplacer-par-un-secret-aleatoire-de-32-caracteres-minimum
 JWT_EXPIRES_IN=1h
 ```
 
-When running outside Compose, MongoDB must be configured as a replica set;
-standalone MongoDB servers do not support reservation transactions.
-
-Start the server:
+Lancer le serveur :
 
 ```bash
 node src/server.js
 ```
 
-The server connects to MongoDB before listening for requests. It exits if the
-database connection fails.
+Le serveur se connecte à MongoDB avant d’écouter les requêtes. `JWT_SECRET`
+doit contenir au moins 32 caractères. `JWT_EXPIRES_IN` est optionnel et vaut
+`1h` par défaut.
 
-## Current endpoints
+## Documentation de l’API
 
-| Method | Path | Description |
-| ------ | ---- | ----------- |
-| `GET` | `/api/health` | Confirms that the API process is responding. |
-| `POST` | `/api/auth/login` | Sign in with an account created by an administrator or manager. |
-| `GET` | `/api/auth/me` | Get the authenticated user's profile. |
-| `PATCH` | `/api/auth/me` | Update the authenticated user's name or email. |
-| `PATCH` | `/api/auth/change-password` | Change the authenticated user's password. |
-| `GET` | `/api/magasins` | List stores visible to the authenticated user. |
-| `GET` | `/api/magasins/:id` | Get a store visible to the authenticated user. |
-| `POST` | `/api/magasins` | Create a store (Admin only). |
-| `PATCH` | `/api/magasins/:id` | Update a store (Admin only). |
-| `PATCH` | `/api/magasins/:id/desactiver` | Deactivate a store (Admin only). |
-| `GET` | `/api/reservations/disponibilite` | Check equipment availability for a selected store and time slot. |
-| `POST` | `/api/reservations` | Create a reservation (User role only). |
-| `GET` | `/api/reservations` | List reservations visible to the authenticated role. |
-| `GET` | `/api/reservations/:id` | Get a reservation within the authenticated user's scope. |
-| `PATCH` | `/api/reservations/:id/annuler` | Cancel the user's own confirmed reservation before it starts. |
-| `GET` | `/api-docs` | Opens the Swagger UI. |
+Swagger UI est disponible à <http://localhost:3000/api-docs>. La spécification
+OpenAPI est générée depuis les annotations de [src/docs/](./src/docs/).
+Les routes protégées exigent l’en-tête :
 
-Protected routes require an `Authorization: Bearer <token>` header. Swagger is
-available at `/api-docs`.
-
-### Reservation rules
-
-Reservation creation requires `magasin`, `materiel`, `dateDebut` (ISO 8601),
-and a strictly positive `dureeHeures`. The selected store must be active and
-the equipment must belong to it, be active, and be available. The API computes
-`dateFin` and rejects overlaps with `CONFIRMEE` or `EN_COURS` reservations.
-Intervals are half-open: a reservation can start exactly when another ends.
-Creation is transactional and uses a per-equipment write guard so simultaneous
-requests cannot both claim an overlapping slot.
-
-Admins can list all reservations, managers can list reservations belonging to
-their assigned store, and users can see only their own. Listing accepts
-`materiel`, `statut`, `du`, and `au` filters. Users can cancel only their own
-confirmed reservations before the start time; cancellation preserves the
-record and releases its time slot.
-
-## Data models
-
-Mongoose models are in `src/models/` and are exported from
-`src/models/index.js`.
-
-| Model | Purpose |
-| ----- | ------- |
-| `Utilisateur` | User account, role, active state, optional store assignment, and password hashing. |
-| `Magasin` | Tool store and active state. |
-| `Materiel` | Physical equipment, unique reference, store, availability, and active state. |
-| `Reservation` | User, equipment, dates, duration, and reservation status. |
-| `Emprunt` | Loan associated with a reservation, including actual checkout and return details. |
-| `Mouvement` | Equipment movement history, optionally associated with a user. |
-| `Installation` | Persistent installation state and reference to the initial administrator. |
-
-Example:
-
-```js
-const { Utilisateur, Reservation } = require('./src/models');
+```http
+Authorization: Bearer <token>
 ```
 
-The reservation service enforces availability, role scope, and transactional
-overlap prevention in addition to schema-level validation.
+Exemple de connexion :
+
+```bash
+curl -X POST http://localhost:3000/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"utilisateur@example.com","motDePasse":"mot-de-passe"}'
+```
+
+### Endpoints actuellement montés
+
+| Méthode | Route | Accès | Description |
+|---|---|---|---|
+| `GET` | `/api/health` | Public | Vérifier que l’API répond. |
+| `POST` | `/api/auth/login` | Public | Ouvrir une session avec un compte existant. |
+| `GET` | `/api/auth/me` | Authentifié | Consulter son profil. |
+| `PATCH` | `/api/auth/me` | Authentifié | Modifier son nom ou son email. |
+| `PATCH` | `/api/auth/change-password` | Authentifié | Modifier son mot de passe. |
+| `GET` | `/api/magasins` | Authentifié | Lister les magasins visibles selon le rôle. |
+| `GET` | `/api/magasins/:id` | Authentifié | Consulter un magasin autorisé. |
+| `POST` | `/api/magasins` | Admin | Créer un magasin. |
+| `PATCH` | `/api/magasins/:id` | Admin | Modifier le nom ou l’adresse. |
+| `PATCH` | `/api/magasins/:id/desactiver` | Admin | Désactiver sans supprimer l’historique. |
+| `GET` | `/api/reservations/disponibilite` | Authentifié | Vérifier un créneau pour un matériel et un magasin. |
+| `POST` | `/api/reservations` | Utilisateur | Créer une réservation confirmée. |
+| `GET` | `/api/reservations` | Authentifié | Lister les réservations de son périmètre. |
+| `GET` | `/api/reservations/:id` | Authentifié | Consulter une réservation de son périmètre. |
+| `PATCH` | `/api/reservations/:id/annuler` | Utilisateur | Annuler sa réservation confirmée avant son début. |
+| `POST` | `/api/emprunts/:reservationId/sortie` | Gestionnaire | Enregistrer la sortie d’un matériel réservé. |
+| `POST` | `/api/emprunts/:empruntId/retour` | Gestionnaire | Enregistrer le retour et l’état du matériel. |
+| `GET` | `/api/emprunts/retards` | Gestionnaire | Lister les emprunts en retard de son magasin. |
+| `GET` | `/api/emprunts/mouvements` | Gestionnaire | Consulter les mouvements de son magasin. |
+
+Il n’y a pas d’inscription publique. Les opérations de création de comptes
+réservées à l’Admin et au Gestionnaire restent à implémenter.
+
+## Règles de réservation
+
+La création attend `magasin`, `materiel`, `dateDebut` au format ISO 8601 et
+`dureeHeures` strictement positive. Le magasin doit être actif; le matériel
+doit y être rattaché, actif et disponible. `dateFin` est calculée par l’API.
+
+Les réservations `CONFIRMEE` et `EN_COURS` occupent un créneau. Les intervalles
+sont semi-ouverts : une réservation peut débuter exactement à la fin de la
+précédente. La création utilise une transaction MongoDB et un verrou d’écriture
+sur le document du matériel pour éviter que deux requêtes simultanées
+n’acceptent des créneaux qui se chevauchent.
+
+- L’Admin peut lister et consulter toutes les réservations.
+- Le Gestionnaire est limité aux réservations des matériels de son magasin.
+- L’Utilisateur ne voit et n’annule que ses propres réservations.
+- L’annulation conserve la réservation avec le statut `ANNULEE`, libérant ainsi
+  le créneau.
+
+## Modèles de données
+
+Les modèles Mongoose et leurs références sont dans `src/models/` :
+
+| Modèle | Données principales |
+|---|---|
+| `Utilisateur` | Nom, email, mot de passe haché, rôle, état actif, magasin facultatif. |
+| `Magasin` | Nom, adresse et état actif. |
+| `Materiel` | Référence unique, nom, description, magasin, disponibilité, état actif. |
+| `Reservation` | Utilisateur, matériel, dates, durée et statut. |
+| `Emprunt` | Réservation unique, dates réelles de sortie et de retour, état au retour. |
+| `Mouvement` | Type, date, description, matériel et utilisateur facultatif. |
+| `Installation` | État persistant de l’installation et administrateur initial; le parcours d’installation n’est pas encore monté dans l’application. |
+
+Les diagrammes PlantUML sont dans [UML/](./UML/).
 
 ## Tests
 
-Run the Jest suite with:
+Lancer les tests automatisés :
 
 ```bash
-npm test
+npm test -- --runInBand
 ```
 
-The tests cover authentication, store access, reservation validation,
-availability, transaction guards, role scoping, and cancellation.
+Les tests existants couvrent notamment l’authentification, les magasins, la
+validation des réservations, leur périmètre d’accès, leur annulation et le
+verrou utilisé pendant la création.
 
-## Project structure
+## Arborescence principale
 
 ```text
 src/
-  app.js              Express application and route mounting
-  server.js           Environment loading and server startup
-  config/
-    database.js       Mongoose connection
-    jwt.js            JWT configuration
-    swagger.js        Swagger/OpenAPI setup
-  controllers/        HTTP request handlers
-  docs/               OpenAPI route documentation
-  middlewares/        Authentication, request validation, and error handling
-  models/             Mongoose data models
-  repositories/       Database access
-  routes/             Express route definitions
-  services/           Application business logic
+  app.js              Montage de l’application et des routes
+  server.js           Configuration et démarrage
+  config/             Connexion MongoDB, JWT et Swagger
+  controllers/        Adaptation requêtes/réponses HTTP
+  docs/               Annotations OpenAPI
+  middlewares/        Authentification, validation, erreurs
+  models/             Schémas Mongoose
+  repositories/       Accès aux données
+  routes/             Routes Express
+  services/           Règles métier
+UML/                  Diagrammes PlantUML et ressources UML
 ```
